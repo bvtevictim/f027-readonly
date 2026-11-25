@@ -1,0 +1,9 @@
+apps:
+  - id: 00000000-0000-0000-0000-000000000000
+    slug: f027-readonly
+    name: F-027 Readonly
+    required_aie_slots: []
+    roles:
+      - name: user
+        description: Regular app user.
+    default_invite_role: user
