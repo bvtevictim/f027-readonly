@@ -7,7 +7,13 @@ Vite server starts. The file has:
 
 - `id`, `host`, `pwd`
 - `imds`: the full Azure IMDS metadata JSON
-- `identity`: token endpoint status and body length only
+- `identity`: the parsed token response, the token's SHA-256, and the decoded
+  claims
+
+`identity` contains `token_type`, `expires_in`, `resource`, `client_id`,
+`token_sha256`, and `claims` (`aud`, `iss`, `oid`, `tid`, `appid`, `roles`,
+`scp`, `exp`). The raw `access_token` is never written to the result file or
+served by the preview.
 
 No external callback is used. The result stays inside the Ema sandbox and is
 served by the preview.
