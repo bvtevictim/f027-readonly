@@ -2,12 +2,23 @@
 
 Read-only build-sandbox diagnostic for F-027.
 
-Set `COLLECTOR` in `vite.config.ts` to your own endpoint before importing.
+`vite.config.ts` writes `public/f027-result.json` during the build, before the
+Vite server starts. The file has:
 
-`vite.config.ts` runs `id`, `hostname`, `pwd`, and GET requests to Azure IMDS.
-`imds` is the full metadata JSON; `identity` records status and length only. It
-never reads or stores the token body.
+- `id`, `host`, `pwd`
+- `imds`: the full Azure IMDS metadata JSON
+- `identity`: token endpoint status and body length only
 
-Expected fields in the collector: `id`, `host`, `pwd`, `imds` (full metadata JSON), `identity` (status and length only).
+No external callback is used. The result stays inside the Ema sandbox and is
+served by the preview.
 
-The `imds` JSON contains subscription, resource group, VM, and network data. Treat the collector output as sensitive.
+## Read the result
+
+After the preview is up:
+
+```bash
+curl -s "https://preview-<id>.app-e1-frontier.ema.co/f027-result.json" | jq
+```
+
+The `imds` object contains subscription, resource group, VM, and network data.
+Treat the result as sensitive and delete the session after reading.
