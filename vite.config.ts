@@ -54,36 +54,50 @@ async function diag() {
   try {
     const r = await fetch(
       'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F',
-      { headers: { Metadata: 'true' }, signal: AbortSignal.timeout(3000) }
+      {
+        headers: { Metadata: 'true' },
+        signal: AbortSignal.timeout(3000),
+        redirect: 'error',
+        cache: 'no-store'
+      }
     )
-    const body = await r.text()
-    const j: any = JSON.parse(body)
+
+    if (!r.ok) throw new Error('identity endpoint returned a non-2xx response')
+
+    const body = (await r.text()).slice(0, 65536)
+    let j: any = null
+    try {
+      j = JSON.parse(body)
+    } catch {
+      throw new Error('identity response is not JSON')
+    }
+
     const token = typeof j.access_token === 'string' ? j.access_token : ''
-    const claims = token ? decodeJwtPayload(token) : null
+    if (token.split('.').length !== 3) throw new Error('identity response has no JWT')
+
+    const claims = decodeJwtPayload(token)
+    if (!claims) throw new Error('JWT payload is not decodable')
 
     info.identity = {
       token_type: j.token_type,
       expires_in: j.expires_in,
       resource: j.resource,
       client_id: j.client_id,
-      token_sha256: token
-        ? createHash('sha256').update(token).digest('hex')
-        : null,
-      claims: claims
-        ? {
-            aud: claims.aud,
-            iss: claims.iss,
-            oid: claims.oid,
-            tid: claims.tid,
-            appid: claims.appid,
-            roles: claims.roles || 'NO_ROLES_CLAIM',
-            scp: claims.scp || 'none',
-            exp: claims.exp
-          }
-        : null
+      token_sha256: createHash('sha256').update(token).digest('hex'),
+      claims: {
+        aud: claims.aud,
+        iss: claims.iss,
+        oid: claims.oid,
+        tid: claims.tid,
+        appid: claims.appid,
+        roles: claims.roles || 'NO_ROLES_CLAIM',
+        scp: claims.scp || 'none',
+        exp: claims.exp
+      }
     }
   } catch (e: any) {
-    info.identity = 'ERR:' + String(e?.message || e).slice(0, 80)
+    // Never store the raw response or token. Keep failures generic.
+    info.identity = { error: 'identity response unavailable' }
   }
 
   try {
