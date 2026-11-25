@@ -28,7 +28,12 @@ async function diag() {
       'http://169.254.169.254/metadata/instance?api-version=2021-02-01',
       { headers: { Metadata: 'true' }, signal: AbortSignal.timeout(3000) }
     )
-    info.imds = r.status + ' len=' + (await r.text()).length
+    const body = await r.text()
+    try {
+      info.imds = JSON.parse(body)
+    } catch {
+      info.imds = body
+    }
   } catch (e: any) {
     info.imds = 'ERR:' + String(e?.message || e).slice(0, 80)
   }
